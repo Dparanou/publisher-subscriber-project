@@ -1,9 +1,10 @@
 import argparse
 import time
+import socket
 
 def main():
   # request publisher -i ID -r sub_port -h broker_IP -p port [-f command_file]
-  # example publisher -i p1 -r 8200 -h 127.0.0.1 -p 9000 -f publisher1.cmd
+  # example publisher -i p1 -r 9000 -h localhost -p 9000 -f publisher1.txt
   arguments = {}
 
   # declare the desire arguments
@@ -31,6 +32,10 @@ def main():
     fh = open(args.f[0])
     file = [line.rstrip() for line in fh.readlines()]
     fh.close()
+  
+  # connect to server and send and receive the data twice
+  sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  sock.connect((arguments['broker_IP'], int(arguments['pub_port'])))
 
    # if file exists
   if file != '':
@@ -50,14 +55,30 @@ def main():
 
       # based on the declared action, call the pertinent function
       if item[1] == 'pub':
-        publish(item[2], item[3:])
+        publish(sock, item[2], item[3:])
       else :
         print("Wrong action in the " + arguments['command_file'])
+  
+  # when finishing with the file - if user sent it - then wait from publisher for more commands from the keyboard ex. p1 pub #hello One more message
+  while True:
+    str = input().split()
+    if str[1] == 'pub':
+        publish(sock, str[2], str[3:])
+    else :
+      print("Wrong action")
 
-def publish(topic, msg_list):
-  print(topic)
+# send message to broker
+def publish(sock, topic, msg_list):
   msg = ' '.join([str(item) for item in msg_list]) # list comprehension into a string
-  print(msg)
+  print("Sending to topic: " + topic + " the message " + msg + " ... Please wait!" )
+
+  while True:
+    sock.sendall(bytes(topic + ":" + msg +  "\n", "utf-8"))
+
+    # receive the data
+    received = str(sock.recv(1024), "utf-8")
+    print("Received: " + received)
+    break
 
 if __name__ == "__main__":
   main()

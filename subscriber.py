@@ -1,10 +1,10 @@
-import sys
+import socket
 import argparse
 import time
 
 def main():
   # request subscriber -i ID -r sub_port -h broker_IP -p port [-f command_file]
-  # example subscriber -i s1 -r 8000 -h 127.0.0.1 -p 9000 -f subscriber1.cmd
+  # example python3 subscriber.py -i s1 -r 8000 -h localhost -p 9001 -f subscriber1.txt
   arguments = {}
   file = ''
 
@@ -33,6 +33,10 @@ def main():
     file = [line.rstrip() for line in fh.readlines()]
     fh.close()
 
+  # connect to server and send and receive the data twice
+  sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  sock.connect((arguments['broker_IP'], int(arguments['port'])))
+
   # if file exists
   if file != '':
     # for each line of the file, execute the appropriate action
@@ -41,7 +45,7 @@ def main():
       Split each line where: 
       item[0] -> number of seconds that the subscriber should wait after connecting in order to execute that command
       item[1] -> command to be executed : sub for subscribe and unsub for unsubscribe
-      item[3] -> topic that the subscriber is interested in subscribing or unsubscribing from
+      item[2] -> topic that the subscriber is interested in subscribing or unsubscribing from
       """""
       item = line.split() # split the each line where 
       
@@ -49,19 +53,35 @@ def main():
       time.sleep(int(item[0]))
 
       # based on the declared action, call the pertinent function
-      if item[1] == 'sub':
-        subscribe(item[2])
-      elif item[1] == 'unsub':
-        unsubscribe(item[2])
+      if item[1] == 'sub' or item[1] == 'unsub':
+        subscriberAction(sock, arguments['id'], item[1], item[2])
+      else :
+        print("Wrong action in the " + arguments['command_file'])
+  
+  # when finishing with the file - if user sent it - then wait from publisher for more commands from the keyboard ex. p1 pub #hello One more message
+  while True:
+    str = input().split()
+
+    # check if user typed 3 arguments
+    if len(str) != 3:
+      print("Please type all the neccessary info ex. SUB_ID COMMAND TOPIC")
+    else:
+      if str[1] == 'sub' or str[1] == 'unsub' and str[0] == arguments['id']:
+          subscriberAction(sock, str[0], str[1], str[2])
+      elif str[0] != arguments['id']:
+        print("You cannot subscribe/unsubscribe another user")
       else :
         print("Wrong action in the " + arguments['command_file'])
 
 
-def subscribe(topic):
-  print(topic)
+def subscriberAction(sock, sub_id, action, topic):
+  while True:
+    sock.sendall(bytes(sub_id + ":" + action + "," + topic +  "\n", "utf-8"))
 
-def unsubscribe(topic):
-  print(topic)
+    # receive the data
+    received = str(sock.recv(1024), "utf-8")
+    print("Received: " + received)
+    break
 
 if __name__ == "__main__":
   main()
