@@ -1,13 +1,13 @@
  #!/usr/bin/python3
 
 import argparse
-from ast import arg
-from pydoc_data.topics import topics
 import socket
 import threading
 import sys
 
 HOST = "localhost"
+
+online_subscribers = {}
 
 def main():
   # request broker -s s_port -p p_port
@@ -51,11 +51,18 @@ def pubthread(P_PORT):
       topic = data.rpartition(':')[0]
       msg = data.rpartition(':')[2]
 
-      if len(msg) != 0:
+      if not data:
+        break
+      else:
         print("Received from Pub-> topic: " + topic + " , message: " + msg)
         conn.sendall(bytes("OK", "utf-8"))
+
+        topic_subs = getTopicSubscribers(topic)
+        notifyActiveSubscribers(topic_subs, online_subscribers, topic, msg)
+
     except:
       print("Pub Disconnected")
+      conn.close()
       break
 
 # thread for subscriber
@@ -70,48 +77,73 @@ def subthread(S_PORT):
   conn, addr = sub_sock.accept()
   print("Sub Connected : " + addr[0] + ":" + str(addr[1]))
 
+  isSubIDSent = False
+
   while True:
     try:
       data = conn.recv(1024).strip().decode()
-      sub_id = data.rpartition(':')[0]
-      action = data.rpartition(':')[2].rpartition(',')[0]
-      topic = data.rpartition(':')[2].rpartition(',')[2]
 
-      if len(str(data)) == 0:
-        print("No message")
-      print("Received from Sub: " + str(data))
+      # the fisrt message is the Subscriber ID, so as to keep the online subscribers with their id's 
+      if not(isSubIDSent): 
+        online_subscribers[data] = conn
+        isSubIDSent = True
+      else :
+        sub_id = data.rpartition(':')[0]
+        action = data.rpartition(':')[2].rpartition(',')[0]
+        topic = data.rpartition(':')[2].rpartition(',')[2]
 
-      file = open("brokerDb.txt", "r")
-      fileLines = [line.rstrip() for line in file.readlines()]
-      file.close()
+        if not data:
+          break
+        else:
+          print("Received from Sub: " + str(data))
 
-      line = sub_id + " " + topic
-      
-      if line not in fileLines:
-        if action == 'sub':
-          file1 = open("brokerDb.txt", "a")
-          file1.write(line + "\n")
-          file1.close()
-          conn.sendall(bytes("Subscribed successfully", "utf-8"))
-        elif action == 'unsub':
-          conn.sendall(bytes("Not subscribes yet to this topic", "utf-8"))
-      else:
-        if action == 'sub':
-          conn.sendall(bytes("Already in this topic", "utf-8"))
-        elif action == 'unsub':
-          file1 = open("brokerDb.txt", "w")
-          fileLines.remove(line)
-          newLines = ("\n".join(fileLines))
-          print(newLines)
-          file1.write(newLines)
-          file1.close()
-          conn.sendall(bytes("Unsubscribed successfully", "utf-8"))
+          file = open("brokerDb.txt", "r")
+          fileLines = [line.rstrip() for line in file.readlines()]
+          file.close()
 
-      # send the sub some data
-      # conn.sendall(bytes("\nsome data for you", "utf-8"))
+          line = sub_id + " " + topic
+          
+          if line not in fileLines:
+            if action == 'sub':
+              file1 = open("brokerDb.txt", "a")
+              file1.write(line + "\n")
+              file1.close()
+              conn.sendall(bytes("Subscribed successfully", "utf-8"))
+            elif action == 'unsub':
+              conn.sendall(bytes("Not subscribes yet to this topic", "utf-8"))
+          else:
+            if action == 'sub':
+              conn.sendall(bytes("Already in this topic", "utf-8"))
+            elif action == 'unsub':
+              file1 = open("brokerDb.txt", "w")
+              fileLines.remove(line)
+              newLines = ("\n".join(fileLines))
+              newLines = newLines + "\n"
+              file1.write(newLines)
+              file1.close()
+              conn.sendall(bytes("Unsubscribed successfully", "utf-8"))
     except:
       print("Sub Disconnected")
+      conn.close()
       break
+
+# get the list of subscribers of a specific topic
+def getTopicSubscribers(topic):
+  subs = []
+  file = open("brokerDb.txt", "r") # read the file that contains the subscribed users to topic
+  for line in file.readlines():
+    if topic in line.rstrip():
+      subs.append(line.strip()[:2])
+  file.close()
+
+  return subs
+
+# send notifications to all active subscribers of the topic for the new message
+def notifyActiveSubscribers(topic_subs, online_subscribers, topic, msg):
+  for (sub, conn) in online_subscribers.items():
+    if sub in topic_subs:
+      conn.send(bytes("Received msg for topic " + topic + ": " + msg + "\n", "utf-8"))
+      # conn.sendall(bytes("Received msg for topic " + topic + ": " + msg, "utf-8"))
 
 if __name__ == "__main__":
   main()

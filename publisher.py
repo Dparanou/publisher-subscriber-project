@@ -4,7 +4,7 @@ import socket
 
 def main():
   # request publisher -i ID -r sub_port -h broker_IP -p port [-f command_file]
-  # example publisher -i p1 -r 9000 -h localhost -p 9000 -f publisher1.txt
+  # example python3 publisher.py -i p1 -r 9000 -h localhost -p 9000 -f publisher1.txt
   arguments = {}
 
   # declare the desire arguments
@@ -49,29 +49,29 @@ def main():
       item[3:] -> message (each item after position 3 is a word of the message) 
       """""
       item = line.split() # split the each line where 
-      
-      # number of seconds that the user will wait until the command execution
-      time.sleep(int(item[0]))
 
       # based on the declared action, call the pertinent function
       if item[1] == 'pub':
-        publish(sock, item[2], item[3:])
+        publish(sock, item[0],item[2], item[3:])
       else :
         print("Wrong action in the " + arguments['command_file'])
   
   # when finishing with the file - if user sent it - then wait from publisher for more commands from the keyboard ex. p1 pub #hello One more message
   while True:
     str = input().split()
+
     if str[1] == 'pub':
-        publish(sock, str[2], str[3:])
+        publish(sock, 0, str[2], str[3:])
     else :
-      print("Wrong action")
+      print("Wrong action. Please type all the nessessary info ex. PUB_ID COMMAND TOPIC MESSAGE")
 
 # send message to broker
-def publish(sock, topic, msg_list):
+def publish(sock, waitTime, topic, msg_list):
   msg = ' '.join([str(item) for item in msg_list]) # list comprehension into a string
   print("Sending to topic: " + topic + " the message " + msg + " ... Please wait!" )
 
+ # number of seconds that the user will wait until the command execution
+  time.sleep(int(waitTime))
   while True:
     sock.sendall(bytes(topic + ":" + msg +  "\n", "utf-8"))
 
