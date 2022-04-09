@@ -12,9 +12,9 @@ Implementation of a simple version of a Publish-Subscribe (Pub/Sub) system using
 
 The application containes 3 main entities:
 
-1. The Broker (\_broker.py) which connects the Publishers and the Subscribers together
-2. The Subscriber (\_subscriber.py) which connects to the Broker, subscribe/unsubscribe to one or more topics and receives notifications about the topics that he/she is subscribed
-3. The Publisher (\_publisher.py) which connects to the Broker and publishes messages to topics
+1. The Broker (_broker.py_) which connects the Publishers and the Subscribers together
+2. The Subscriber (_subscriber.py_) which connects to the Broker, subscribe/unsubscribe to one or more topics and receives notifications about the topics that he/she is subscribed
+3. The Publisher (_publisher.py_) which connects to the Broker and publishes messages to topics
 
 To properly run the application you should run the following commands.
 
