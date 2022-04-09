@@ -24,10 +24,10 @@ First, the Broker must be start:
 python3 broker.py -s 9001 -p 9000
 ```
 
-> The arguments indicate:
+> The arguments indicate the ports where they will connect:
 >
 > - the subscriber port (-s)
-> - the publisher port (-p) where the will connect
+> - the publisher port (-p)
 
 Then, the Subscriber can connect to the Broker by executing
 
