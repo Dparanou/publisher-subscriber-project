@@ -6,5 +6,5 @@ s2 #hello
 s1 #world
 s1 #you
 s2 #you
-s1 #hello
 s1 #dimi
+s1 #hello
