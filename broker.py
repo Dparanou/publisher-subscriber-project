@@ -3,6 +3,7 @@
 import argparse
 import socket
 import threading
+from _thread import *
 import sys
 
 HOST = "localhost"
@@ -11,7 +12,7 @@ online_subscribers = {}
 
 def main():
   # request broker -s s_port -p p_port
-  # example broker -s 9001 -p 9000
+  # example python3 broker.py -s 9001 -p 9000
   arguments = {}
 
   # declare the desire arguments
@@ -33,18 +34,25 @@ def main():
     sys.exit(0)
 
 
-# thread for publisher
+# thread for publishers
 def pubthread(P_PORT):
   # set up for publisher
   pub_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   pub_sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
   pub_sock.bind((HOST, int(P_PORT)))
-  pub_sock.listen(10)
+  pub_sock.listen(5)
   print("Broker listening Pubs on %s %d" %(HOST, int(P_PORT)))
 
-  conn, addr = pub_sock.accept()
-  print("Pub Connected : " + addr[0] + ":" + str(addr[1]))
+  while True:
+    conn, addr = pub_sock.accept()
+    print("Pub Connected : " + addr[0] + ":" + str(addr[1]))
 
+    # Start new thread for Publisher
+    start_new_thread(handle_pubs, (conn,))
+
+
+# Function for handle publishers communication
+def handle_pubs(conn):
   while True:
     try:
       data = conn.recv(1024).strip().decode()
@@ -65,20 +73,25 @@ def pubthread(P_PORT):
       conn.close()
       break
 
-# thread for subscriber
+# thread for subscribers
 def subthread(S_PORT):
   # set up for subscriber
   sub_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   sub_sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
   sub_sock.bind((HOST, int(S_PORT)))
-  sub_sock.listen(10)
+  sub_sock.listen(5)
   print("Broker listening Subs on %s %d" %(HOST, int(S_PORT)))
 
-  conn, addr = sub_sock.accept()
-  print("Sub Connected : " + addr[0] + ":" + str(addr[1]))
+  while True:
+    conn, addr = sub_sock.accept()
+    print("Sub Connected : " + addr[0] + ":" + str(addr[1]))
 
+    # Start new thread for Subscriber
+    start_new_thread(handle_subs, (conn,))
+  
+# Function for handle subscribers communication
+def handle_subs(conn):
   isSubIDSent = False
-
   while True:
     try:
       data = conn.recv(1024).strip().decode()
